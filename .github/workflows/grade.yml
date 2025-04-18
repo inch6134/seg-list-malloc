@@ -33,7 +33,7 @@ jobs:
       - name: Prepare grading artifact
         run: python3 ./grade-malloc.py > grading-output.txt
       - name: Copy grade artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: grading-output.txt
           path: ./grading-output.txt
