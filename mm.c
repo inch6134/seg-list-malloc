@@ -168,14 +168,13 @@ static void *extend_heap(uint32_t words) {
 // find_fit - Find a fit for a block with asize bytes
 //
 static void *find_fit(uint32_t asize) {
-  void *bp = heap_listp;
-  while (GET_SIZE(HDRP(bp))) {
-    if ((asize <= GET_SIZE(HDRP(bp))) && !GET_ALLOC(HDRP(bp))) {
+  void *bp;
+  for (bp = heap_listp; GET_SIZE(HDRP(bp)) > 0; bp = NEXT_BLKP(bp)) {
+    if (!GET_ALLOC(HDRP(bp)) && (asize <= GET_SIZE(HDRP(bp)))) {
       return bp;
     }
-    bp = NEXT_BLKP(bp);
   }
-  return NULL; /* no fit */
+  return NULL;
 }
 
 //
