@@ -347,21 +347,69 @@ void mm_free(void *bp) {
 // mm_realloc -- implemented for you
 //
 void *mm_realloc(void *ptr, uint32_t size) {
-  void *newp;
-  uint32_t copySize;
+  if (ptr == NULL) {
+    return mm_malloc(size); // If ptr is NULL, act like malloc
+  }
+  if (size == 0) {
+    mm_free(ptr); // If size is 0, act like free
+    return NULL;
+  }
 
-  newp = mm_malloc(size);
-  if (newp == NULL) {
-    printf("ERROR: mm_malloc failed in mm_realloc\n");
-    exit(1);
+  // 1. Calculate new size
+  size_t new_size = ALIGN(size + OVERHEAD);
+  if (new_size < MINBLOCKSIZE) {
+    new_size = MINBLOCKSIZE;
   }
-  copySize = (uint32_t)(GET_SIZE(HDRP(ptr)) - OVERHEAD);
-  if ((uint32_t)size < copySize) {
-    copySize = size;
+  size_t old_size = GET_SIZE(HDRP(ptr));
+
+  // 2. Shrinking case
+  if (new_size <= old_size) {
+    if (old_size - new_size >= MINBLOCKSIZE) {
+      // Split the block
+      PUT(HDRP(ptr), PACK(new_size, 1));
+      PUT(FTRP(ptr), PACK(new_size, 1));
+
+      void *new_free_bp = NEXT_BLKP(ptr);
+      PUT(HDRP(new_free_bp), PACK(old_size - new_size, 0));
+      PUT(FTRP(new_free_bp), PACK(old_size - new_size, 0));
+      coalesce(new_free_bp); // Coalesce the new free block
+    }
+    // else: no splitting, just return original ptr
+    return ptr;
   }
-  memcpy(newp, ptr, copySize);
+
+  // 3. Extending in-place
+  void *next_bp = NEXT_BLKP(ptr);
+  if (!GET_ALLOC(HDRP(next_bp)) &&
+      (old_size + GET_SIZE(HDRP(next_bp))) >= new_size) {
+    // Coalesce with the next free block
+    delete_free(next_bp);
+    size_t combined_size = old_size + GET_SIZE(HDRP(next_bp));
+
+    PUT(HDRP(ptr), PACK(combined_size, 1));
+    PUT(FTRP(ptr), PACK(combined_size, 1));
+
+    // Optionally, split the coalesced block
+    if (combined_size - new_size >= MINBLOCKSIZE) {
+      PUT(HDRP(ptr), PACK(new_size, 1));
+      PUT(FTRP(ptr), PACK(new_size, 1));
+
+      void *new_free_bp = NEXT_BLKP(ptr);
+      PUT(HDRP(new_free_bp), PACK(combined_size - new_size, 0));
+      PUT(FTRP(new_free_bp), PACK(combined_size - new_size, 0));
+      insert_free(new_free_bp); // Insert the remainder
+    }
+    return ptr;
+  }
+
+  // 4. Fallback to naive realloc
+  void *new_ptr = mm_malloc(size);
+  if (new_ptr == NULL) {
+    return NULL; // Malloc failed
+  }
+  memcpy(new_ptr, ptr, size);
   mm_free(ptr);
-  return newp;
+  return new_ptr;
 }
 
 //
