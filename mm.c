@@ -1,7 +1,7 @@
 /*
  * mm.c -
- * Converted to explicit free list allocator, 64-bit headers,
- * LIFO insertion, and MINBLOCKSIZE = 32 bytes.
+ * Converted to segregated free list allocator, 64-bit headers,
+ * address-ordered, and MINBLOCKSIZE = 32 bytes.
  */
 #include "mm.h"
 #include "memlib.h"
@@ -40,6 +40,8 @@ team_t team = {
 
 /* minimum block: header(8) + footer(8) + next(8) + prev(8) = 32 */
 #define MINBLOCKSIZE 32
+
+#define NUM_FREE_LISTS 12
 
 static inline size_t ALIGN(size_t size) {
   return (((size) + (ALIGNMENT - 1)) & ~(ALIGNMENT - 1));
@@ -105,8 +107,8 @@ static inline void SET_PREV_FREE(void *bp, void *ptr) {
 // Global Variables
 //
 
-static char *heap_listp; /* pointer to first block */
-static void *free_listp; // pointer to first free block
+static char *heap_listp;                            /* pointer to first block */
+static void *segregated_free_lists[NUM_FREE_LISTS]; // array of seg lists
 
 //
 // function prototypes for internal helper routines
@@ -117,6 +119,7 @@ static void *find_fit(size_t asize);
 static void *coalesce(void *bp);
 static void delete_free(void *bp);
 static void insert_free(void *bp);
+static int get_list_index(size_t size);
 static void printblock(void *bp);
 static void checkblock(void *bp);
 
@@ -136,7 +139,10 @@ int mm_init(void) {
 
   heap_listp += DSIZE; // move pointer to prologue
 
-  free_listp = NULL;
+  // Initialize all segregated free list pointers to NULL
+  for (int i = 0; i < NUM_FREE_LISTS; i++) {
+    segregated_free_lists[i] = NULL;
+  }
 
   // extend empty heap with a free block of CHUNKSIZE bytes
   if (extend_heap(CHUNKSIZE / WSIZE) == NULL) {
@@ -178,38 +184,70 @@ static void *extend_heap(size_t words) {
 // Practice problem 9.8
 //
 // find_fit - Find a fit for a block with asize bytes
+// loops through se
 //
 static void *find_fit(uint64_t asize) {
-  void *bp = free_listp;
-  while (bp != NULL) {
-    if (asize <= GET_SIZE(HDRP(bp))) {
-      return bp;
+  int index = get_list_index(asize);
+
+  for (int i = index; i < NUM_FREE_LISTS; i++) {
+    void *bp = segregated_free_lists[i];
+    while (bp != NULL) {
+      if (asize <= GET_SIZE(HDRP(bp))) {
+        return bp;
+      }
+      bp = NEXT_FREE(bp);
     }
-    bp = NEXT_FREE(bp);
   }
   return NULL; /* no fit */
 }
 
-// insert_free/delete_free - LIFO insert and delete from explicit list
+// inserts blocks in address order
 static void insert_free(void *bp) {
   assert(GET_ALLOC(HDRP(bp)) == 0);
-  SET_NEXT_FREE(bp, free_listp);
-  SET_PREV_FREE(bp, NULL);
-  if (free_listp != NULL) {
-    SET_PREV_FREE(free_listp, bp);
+  size_t size = GET_SIZE(HDRP(bp));
+  int index = get_list_index(size);
+
+  void *list_head = segregated_free_lists[index];
+  void *prev_free = NULL;      // keeps track of previous block
+  void *next_free = list_head; // start at list head
+
+  // traverse list to find the correct insertion point
+  while (next_free != NULL && (uintptr_t)next_free < (uintptr_t)bp) {
+    prev_free = next_free;
+    next_free = NEXT_FREE(next_free);
   }
-  free_listp = bp;
+  // pointers are now set before (prev) and after (next) the insertion point
+
+  // Case 1: Insert at head of list
+  if (prev_free == NULL) {
+    SET_NEXT_FREE(bp, list_head);
+    SET_PREV_FREE(bp, NULL);
+    if (list_head != NULL) {
+      SET_PREV_FREE(list_head, bp);
+    }
+    segregated_free_lists[index] = bp;
+  } else { // Case 2: Insert in middle or end
+    SET_NEXT_FREE(bp, next_free);
+    SET_PREV_FREE(bp, prev_free);
+    SET_NEXT_FREE(prev_free, bp);
+    if (next_free != NULL) {
+      SET_PREV_FREE(next_free, bp);
+    }
+  }
 }
 
 static void delete_free(void *bp) {
+  size_t size = GET_SIZE(HDRP(bp));
+  int index = get_list_index(size);
+
   void *prev = PREV_FREE(bp);
   void *next = NEXT_FREE(bp);
 
   if (prev != NULL) {
     SET_NEXT_FREE(prev, next);
   } else {
-    // bp was head
-    free_listp = next;
+    // bp was head of the list
+    segregated_free_lists[index] = next;
   }
 
   if (next != NULL) {
@@ -219,6 +257,33 @@ static void delete_free(void *bp) {
   // clear pointers for mem ref safety
   SET_NEXT_FREE(bp, NULL);
   SET_PREV_FREE(bp, NULL);
+}
+
+// helper function for segregated_free_lists
+static int get_list_index(size_t size) {
+  if (size <= 16)
+    return 0;
+  if (size <= 32)
+    return 1;
+  if (size <= 64)
+    return 2;
+  if (size <= 128)
+    return 3;
+  if (size <= 256)
+    return 4;
+  if (size <= 512)
+    return 5;
+  if (size <= 1024)
+    return 6;
+  if (size <= 2048)
+    return 7;
+  if (size <= 4096)
+    return 8;
+  if (size <= 8192)
+    return 9;
+  if (size <= 16384)
+    return 10;
+  return NUM_FREE_LISTS - 1; // Last list for everything larger
 }
 
 //
@@ -281,8 +346,6 @@ void *mm_malloc(uint32_t size) {
     asize = MINBLOCKSIZE; // allocate room for free pointers
   } else {                // add in overhead and room for payload
     asize = ALIGN(size + OVERHEAD);
-    if (asize < MINBLOCKSIZE)
-      asize = MINBLOCKSIZE;
   }
 
   // search free list for a fit
