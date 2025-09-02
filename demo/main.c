@@ -1,4 +1,5 @@
 #include "../mm.h"
+#include "explicit.h"
 #include "implicit.h"
 #include <stddef.h>
 #include <stdint.h>
@@ -80,25 +81,33 @@ int main() {
   printf("Max allocation size in utilization test: %d bytes\n", MAX_SIZE);
   printf("Number of pointers tracked for utilization: %d\n\n", UTIL_N);
 
-  // 1. Custom allocator
+  // Custom allocator
   printf(">>> Testing Custom allocator (segregated free list) <<<\n");
   mm_init();
   benchmark_malloc_free("Custom", mm_malloc, mm_free);
   benchmark_realloc("Custom", mm_malloc, mm_free, mm_realloc);
   putchar('\n');
 
-  // 2. glibc allocator
-  printf(">>> Testing glibc malloc <<<\n");
-  benchmark_malloc_free("glibc", glibc_malloc, free);
-  benchmark_realloc("glibc", glibc_malloc, free, glibc_realloc);
-  putchar('\n');
-
-  // 3. Implicit list baseline
+  // Implicit list baseline
   printf(">>> Testing Implicit list allocator <<<\n");
   implicit_init();
   benchmark_malloc_free("Implicit", implicit_malloc, implicit_free);
   benchmark_realloc("Implicit", implicit_malloc, implicit_free,
                     implicit_realloc);
+  putchar('\n');
+
+  // Explicit list baseline
+  printf(">>> Testing Explicit list allocator <<<\n");
+  explicit_init();
+  benchmark_malloc_free("Explicit", explicit_malloc, explicit_free);
+  benchmark_realloc("Explicit", explicit_malloc, explicit_free,
+                    explicit_realloc);
+  putchar('\n');
+
+  // glibc allocator
+  printf(">>> Testing glibc malloc <<<\n");
+  benchmark_malloc_free("glibc", glibc_malloc, free);
+  benchmark_realloc("glibc", glibc_malloc, free, glibc_realloc);
   putchar('\n');
 
   printf("=== Benchmark Complete ===\n");
