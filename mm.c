@@ -74,14 +74,14 @@ static inline void *PREV_BLKP(void *bp) {
 // macros for traversing the free list
 
 static inline void *NEXT_FREE(void *bp) { return (*(void **)(bp)); }
-static inline void *PREV_FREE(void *bp) { return (*(void **)(bp + WSIZE)); }
+static inline void *PREV_FREE(char *bp) { return (*(char **)(bp + WSIZE)); }
 
 // setters for free-list pointers
 static inline void SET_NEXT_FREE(void *bp, void *ptr) {
   *((void **)(bp)) = ptr;
 }
-static inline void SET_PREV_FREE(void *bp, void *ptr) {
-  *((void **)(bp + WSIZE)) = ptr;
+static inline void SET_PREV_FREE(char *bp, void *ptr) {
+  *((char **)(bp + WSIZE)) = ptr;
 }
 
 /////////////////////////////////////////////////////////////////////////////

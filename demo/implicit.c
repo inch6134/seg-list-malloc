@@ -105,9 +105,9 @@ static void printblock(void *bp);
 static void checkblock(void *bp);
 
 //
-// mm_init - Initialize the memory manager
+// implicit_init - Initialize the memory manager
 //
-int mm_init(void) {
+int implicit_init(void) {
   // create initial empty heap
   if ((heap_listp = sbrk(4 * WSIZE)) == (void *)-1)
     return -1;
@@ -163,9 +163,9 @@ static void *find_fit(uint32_t asize) {
 }
 
 //
-// mm_free - Free a block
+// implicit_free - Free a block
 //
-void mm_free(void *bp) {
+void implicit_free(void *bp) {
   size_t size = GET_SIZE(HDRP(bp)); // get block size from header
 
   PUT(HDRP(bp), PACK(size, 0)); // set header pointer of freed block to 0
@@ -207,9 +207,9 @@ static void *coalesce(void *bp) {
 }
 
 //
-// mm_malloc - Allocate a block with at least size bytes of payload
+// implicit_malloc - Allocate a block with at least size bytes of payload
 //
-void *mm_malloc(uint32_t size) {
+void *implicit_malloc(uint32_t size) {
   size_t asize;      // adjusted block size
   size_t extendsize; // amount to extend heap if no fit found
   char *bp;
@@ -262,15 +262,15 @@ static void place(void *bp, uint32_t asize) {
 }
 
 //
-// mm_realloc -- implemented for you
+// implicit_realloc -- implemented for you
 //
-void *mm_realloc(void *ptr, uint32_t size) {
+void *implicit_realloc(void *ptr, uint32_t size) {
   void *newp;
   uint32_t copySize;
 
-  newp = mm_malloc(size);
+  newp = implicit_malloc(size);
   if (newp == NULL) {
-    printf("ERROR: mm_malloc failed in mm_realloc\n");
+    printf("ERROR: implicit_malloc failed in implicit_realloc\n");
     exit(1);
   }
   copySize = GET_SIZE(HDRP(ptr));
@@ -278,18 +278,18 @@ void *mm_realloc(void *ptr, uint32_t size) {
     copySize = size;
   }
   memcpy(newp, ptr, copySize);
-  mm_free(ptr);
+  implicit_free(ptr);
   return newp;
 }
 
 //
-// mm_checkheap - Check the heap for consistency
+// implicit_checkheap - Check the heap for consistency
 //
-void mm_checkheap(int verbose) {
+void implicit_checkheap(int verbose) {
   //
   // This provided implementation assumes you're using the structure
   // of the sample solution in the text. If not, omit this code
-  // and provide your own mm_checkheap
+  // and provide your own implicit_checkheap
   //
   void *bp = heap_listp;
 

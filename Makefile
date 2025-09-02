@@ -3,10 +3,10 @@ CFLAGS = -Wall -Wextra -Wpedantic -O3 -g
 
 all: demo
 
-demo: mm.o demo/main.o
-	$(CC) $(CFLAGS) -o demo/demo mm.o demo/main.o
+demo: mm.o demo/main.o demo/implicit.o
+	$(CC) $(CFLAGS) -o demo.out mm.o demo/main.o demo/implicit.o
 
 clean:
-	rm -f *.o demo/*.o demo/demo
+	rm -f *.o demo/*.o demo.out
 
 
