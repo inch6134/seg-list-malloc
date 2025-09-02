@@ -3,8 +3,6 @@
  * Converted to segregated free list allocator, 64-bit headers,
  * address-ordered, and MINBLOCKSIZE = 32 bytes.
  */
-#include "mm.h"
-#include "memlib.h"
 #include <assert.h>
 #include <memory.h>
 #include <stddef.h>
@@ -12,22 +10,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-
-/*********************************************************
- * NOTE TO STUDENTS: Before you do anything else, please
- * provide your team information in the following struct.
- ********************************************************/
-team_t team = {
-    /* Team name */
-    "Alex Chang",
-    /* First member's full name */
-    "Alex Chang",
-    /* First member's email address */
-    "inch6134@colorado.edu",
-    /* Second member's full name (leave blank if none) */
-    "",
-    /* Second member's email address (leave blank if none) */
-    ""};
 
 /////////////////////////////////////////////////////////////////////////////
 // Constants and macros (64-bit)
@@ -128,7 +110,7 @@ static void checkblock(void *bp);
 //
 int mm_init(void) {
   // create initial empty heap w/ padding, prologue, epilogue
-  if ((heap_listp = mem_sbrk(4 * WSIZE)) == (void *)-1)
+  if ((heap_listp = sbrk(4 * WSIZE)) == (void *)-1)
     return -1;
 
   // initialize empty free list
@@ -164,7 +146,7 @@ static void *extend_heap(size_t words) {
   if (size < MINBLOCKSIZE)
     size = MINBLOCKSIZE;
 
-  if ((long)(bp = mem_sbrk(size)) == -1) {
+  if ((long)(bp = sbrk(size)) == -1) {
     return NULL;
   }
 

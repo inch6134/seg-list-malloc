@@ -1,17 +1,8 @@
-#
-# ignore core files
-##
-**core.*
-##./**core.*
-.ipynb_checkpoints
-##
-## and local .o
-##
+# Build artifacts
 *.o
-##
-## Lab specific
-##
-checkalign
-mdriver
-# .nfs files are created when an open file is removed but is still being accessed
-.nfs*
+demo/demo
+
+# Backup / swap files
+*~
+*.swp
+*.swo
